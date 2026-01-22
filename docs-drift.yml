@@ -1,0 +1,17 @@
+# docs-drift configuration
+# https://github.com/georg-nikola/docs-drift
+
+version: 1
+
+docs:
+  paths:
+    - README.md
+    - testdata/example.md
+
+checks:
+  code_blocks:
+    enabled: true
+    languages:
+      - javascript
+      - python
+    timeout: 30s

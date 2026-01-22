@@ -1,0 +1,80 @@
+name: 'docs-drift'
+description: 'Detect documentation drift by validating code examples in Markdown files'
+author: 'georg-nikola'
+
+branding:
+  icon: 'file-text'
+  color: 'blue'
+
+inputs:
+  config:
+    description: 'Path to docs-drift.yml config file'
+    required: false
+    default: 'docs-drift.yml'
+  version:
+    description: 'Version of docs-drift to use'
+    required: false
+    default: 'latest'
+  verbose:
+    description: 'Enable verbose output'
+    required: false
+    default: 'false'
+
+outputs:
+  drift-detected:
+    description: 'Whether documentation drift was detected (true/false)'
+    value: ${{ steps.check.outputs.drift-detected }}
+  total-blocks:
+    description: 'Total number of code blocks checked'
+    value: ${{ steps.check.outputs.total-blocks }}
+  failed-blocks:
+    description: 'Number of code blocks that failed'
+    value: ${{ steps.check.outputs.failed-blocks }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache: false
+
+    - name: Install docs-drift
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          go install github.com/georg-nikola/docs-drift/cmd/docs-drift@latest
+        else
+          go install github.com/georg-nikola/docs-drift/cmd/docs-drift@${{ inputs.version }}
+        fi
+
+    - name: Verify Node.js is available
+      shell: bash
+      run: node --version
+
+    - name: Verify Python is available
+      shell: bash
+      run: python3 --version
+
+    - name: Run docs-drift check
+      id: check
+      shell: bash
+      run: |
+        VERBOSE_FLAG=""
+        if [ "${{ inputs.verbose }}" = "true" ]; then
+          VERBOSE_FLAG="--verbose"
+        fi
+
+        set +e
+        docs-drift check --config "${{ inputs.config }}" $VERBOSE_FLAG
+        EXIT_CODE=$?
+        set -e
+
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "drift-detected=false" >> $GITHUB_OUTPUT
+        elif [ $EXIT_CODE -eq 1 ]; then
+          echo "drift-detected=true" >> $GITHUB_OUTPUT
+        fi
+
+        exit $EXIT_CODE
