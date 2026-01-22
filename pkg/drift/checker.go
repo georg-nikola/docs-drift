@@ -27,6 +27,7 @@ type BlockResult struct {
 	Success    bool
 	Output     string
 	Error      string
+	Skipped    bool // Indicates if this block was skipped
 }
 
 // HasDrift returns true if any code blocks failed
@@ -146,6 +147,13 @@ func (c *Checker) CheckConcurrent(files []string, workers int) (*Results, error)
 		workers = 4
 	}
 
+	// Verify runtimes are available before starting workers
+	for _, lang := range c.config.Checks.CodeBlocks.Languages {
+		if err := runner.CheckRuntime(lang); err != nil {
+			return nil, fmt.Errorf("runtime check failed for %s: %w", lang, err)
+		}
+	}
+
 	results := &Results{
 		TotalFiles: len(files),
 	}
@@ -153,6 +161,10 @@ func (c *Checker) CheckConcurrent(files []string, workers int) (*Results, error)
 	// Collect all blocks first
 	var allBlocks []parser.CodeBlock
 	for _, filePath := range files {
+		if c.verbose {
+			fmt.Printf("Parsing %s...\n", filePath)
+		}
+
 		blocks, err := c.parser.ParseFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %s: %w", filePath, err)
@@ -163,12 +175,18 @@ func (c *Checker) CheckConcurrent(files []string, workers int) (*Results, error)
 
 	results.TotalBlocks = len(allBlocks)
 
-	// Process blocks concurrently
+	// If no blocks, return early
+	if len(allBlocks) == 0 {
+		return results, nil
+	}
+
+	// Define job structure with skip flag
 	type blockJob struct {
 		block parser.CodeBlock
 		index int
 	}
 
+	// Create channels
 	jobs := make(chan blockJob, len(allBlocks))
 	resultsChan := make(chan BlockResult, len(allBlocks))
 
@@ -179,16 +197,20 @@ func (c *Checker) CheckConcurrent(files []string, workers int) (*Results, error)
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
+				// Handle skipped blocks
 				if job.block.Skip || job.block.Language == "" {
 					resultsChan <- BlockResult{
 						FilePath:   job.block.FilePath,
 						LineNumber: job.block.LineNumber,
 						Language:   job.block.Language,
-						Success:    true, // Skipped blocks are considered successful
+						Success:    true,
+						Skipped:    true,
 					}
 					continue
 				}
-				resultsChan <- c.runBlock(job.block)
+				// Run the block
+				result := c.runBlock(job.block)
+				resultsChan <- result
 			}
 		}()
 	}
@@ -199,7 +221,7 @@ func (c *Checker) CheckConcurrent(files []string, workers int) (*Results, error)
 	}
 	close(jobs)
 
-	// Wait for all workers to finish
+	// Wait for all workers to finish in a separate goroutine
 	go func() {
 		wg.Wait()
 		close(resultsChan)
@@ -207,19 +229,21 @@ func (c *Checker) CheckConcurrent(files []string, workers int) (*Results, error)
 
 	// Collect results
 	for result := range resultsChan {
-		if result.Success {
-			// Check if it was skipped
-			for _, block := range allBlocks {
-				if block.FilePath == result.FilePath &&
-					block.LineNumber == result.LineNumber &&
-					(block.Skip || block.Language == "") {
-					results.Skipped++
-					continue
-				}
+		if result.Skipped {
+			results.Skipped++
+			if c.verbose {
+				fmt.Printf("  Skipped block at line %d\n", result.LineNumber)
 			}
+		} else if result.Success {
 			results.Passed++
+			if c.verbose {
+				fmt.Printf("  Line %d: %s - passed\n", result.LineNumber, result.Language)
+			}
 		} else {
 			results.Failed = append(results.Failed, result)
+			if c.verbose {
+				fmt.Printf("  Line %d: %s - FAILED\n", result.LineNumber, result.Language)
+			}
 		}
 	}
 

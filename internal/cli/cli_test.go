@@ -247,3 +247,149 @@ func TestCollectFiles_NoMatches(t *testing.T) {
 		t.Errorf("expected 0 files, got %d", len(files))
 	}
 }
+
+func TestRun_Check_Parallel(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	// Create config
+	config := `version: 1
+docs:
+  paths:
+    - "*.md"
+checks:
+  code_blocks:
+    enabled: true
+    languages: [javascript]
+`
+	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+
+	// Create markdown files with valid code
+	readme := `# Test
+` + "```javascript" + `
+console.log("hello");
+` + "```" + `
+`
+	os.WriteFile("README.md", []byte(readme), 0644)
+	os.WriteFile("GUIDE.md", []byte(readme), 0644)
+
+	code := Run([]string{"check", "--parallel"}, "test")
+	if code != ExitNoDrift {
+		t.Errorf("expected exit code %d for parallel check, got %d", ExitNoDrift, code)
+	}
+}
+
+func TestRun_Check_ParallelWithWorkers(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	// Create config
+	config := `version: 1
+docs:
+  paths:
+    - "*.md"
+checks:
+  code_blocks:
+    enabled: true
+    languages: [javascript]
+`
+	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+
+	// Create markdown file with valid code
+	readme := `# Test
+` + "```javascript" + `
+console.log("hello");
+` + "```" + `
+`
+	os.WriteFile("README.md", []byte(readme), 0644)
+
+	code := Run([]string{"check", "--parallel", "--workers", "2"}, "test")
+	if code != ExitNoDrift {
+		t.Errorf("expected exit code %d for parallel check with workers, got %d", ExitNoDrift, code)
+	}
+}
+
+func TestRun_Check_InvalidWorkers(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	// Create config
+	config := `version: 1
+docs:
+  paths:
+    - "*.md"
+checks:
+  code_blocks:
+    enabled: true
+    languages: [javascript]
+`
+	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+
+	code := Run([]string{"check", "--workers", "0"}, "test")
+	if code != ExitRuntimeErr {
+		t.Errorf("expected exit code %d for invalid workers, got %d", ExitRuntimeErr, code)
+	}
+}
+
+func TestRun_Check_ChangedOnlyNotGitRepo(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	// Create config
+	config := `version: 1
+docs:
+  paths:
+    - "*.md"
+checks:
+  code_blocks:
+    enabled: true
+    languages: [javascript]
+`
+	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+
+	// Not a git repo, so --changed-only should fail
+	code := Run([]string{"check", "--changed-only"}, "test")
+	if code != ExitRuntimeErr {
+		t.Errorf("expected exit code %d for --changed-only outside git repo, got %d", ExitRuntimeErr, code)
+	}
+}
+
+func TestRun_Check_Verbose(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	// Create config
+	config := `version: 1
+docs:
+  paths:
+    - "*.md"
+checks:
+  code_blocks:
+    enabled: true
+    languages: [javascript]
+`
+	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+
+	// Create markdown file with valid code
+	readme := `# Test
+` + "```javascript" + `
+console.log("hello");
+` + "```" + `
+`
+	os.WriteFile("README.md", []byte(readme), 0644)
+
+	code := Run([]string{"check", "--verbose"}, "test")
+	if code != ExitNoDrift {
+		t.Errorf("expected exit code %d for verbose check, got %d", ExitNoDrift, code)
+	}
+}

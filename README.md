@@ -12,6 +12,8 @@ Documentation gets out of sync with code. Code examples in README files break si
 
 - Validates JavaScript and Python code blocks in Markdown files
 - Runs in CI/CD pipelines via GitHub Action
+- **Git integration**: Only check changed files in CI for faster validation
+- **Parallel execution**: Concurrent code block checking for improved performance
 - Fast, local-first, deterministic
 - No SaaS, no telemetry
 - Skip specific code blocks with `docs-drift:skip` directive
@@ -94,6 +96,21 @@ docs-drift check --config ./custom-config.yml
 # Verbose output
 docs-drift check --verbose
 
+# Only check changed files (requires git repository)
+docs-drift check --changed-only
+
+# Check changes compared to specific branch/commit
+docs-drift check --changed-only --base origin/main
+
+# Enable parallel execution for faster validation
+docs-drift check --parallel
+
+# Specify number of concurrent workers (default: 4)
+docs-drift check --parallel --workers 8
+
+# Combine flags for optimal CI performance
+docs-drift check --changed-only --parallel --workers 4
+
 # Show version
 docs-drift version
 ```
@@ -117,6 +134,58 @@ const example = "skipped";
 ```
 ~~~
 
+### Changed-only Mode
+
+The `--changed-only` flag uses git to only validate code blocks in modified Markdown files, significantly improving performance in CI pipelines for large documentation repositories.
+
+```bash
+# Check only files changed since default branch (auto-detects main/master)
+docs-drift check --changed-only
+
+# Check files changed compared to a specific branch
+docs-drift check --changed-only --base origin/develop
+
+# Check files changed compared to a specific commit
+docs-drift check --changed-only --base abc123f
+```
+
+**Requirements**:
+- Must be run inside a git repository
+- Base branch/commit must exist in the repository
+- If `--base` is not specified, automatically detects the default branch (main or master)
+
+**Use cases**:
+- Pull request validation (only check docs modified in the PR)
+- Incremental validation in large documentation repositories
+- Faster feedback loops during development
+
+### Performance Optimization
+
+The `--parallel` flag enables concurrent execution of code block validation, providing significant speedup on multi-core systems.
+
+```bash
+# Enable parallel execution with default workers (4)
+docs-drift check --parallel
+
+# Specify custom number of workers
+docs-drift check --parallel --workers 8
+```
+
+**Performance characteristics**:
+- **Sequential (default)**: Processes code blocks one at a time
+- **Parallel**: Benchmarks show ~2-4x speedup depending on worker count
+- **Optimal worker count**: Typically matches CPU core count
+- **Minimum workers**: Must be at least 1
+
+**Best practices**:
+- Use `--parallel` for repositories with many code blocks (10+)
+- Combine with `--changed-only` for maximum CI performance
+- Start with default workers (4) and adjust based on benchmarks
+- For very large repositories, consider using both flags together:
+  ```bash
+  docs-drift check --changed-only --parallel --workers $(nproc)
+  ```
+
 ## GitHub Action
 
 Add to your workflow:
@@ -135,10 +204,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for --changed-only mode
 
-      - uses: georg-nikola/docs-drift@v0.1
+      - uses: georg-nikola/docs-drift@v0.2
         with:
           config: docs-drift.yml
+```
+
+### Optimized CI Configuration
+
+For pull requests, use `--changed-only` to validate only modified documentation:
+
+```yaml
+name: Documentation Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  docs-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for git comparison
+
+      - uses: georg-nikola/docs-drift@v0.2
+        with:
+          config: docs-drift.yml
+          changed-only: true
+          base: origin/main
+          parallel: true
+          workers: 4
 ```
 
 ### Action Inputs
@@ -148,6 +247,10 @@ jobs:
 | `config` | Path to config file | `docs-drift.yml` |
 | `version` | docs-drift version | `latest` |
 | `verbose` | Enable verbose output | `false` |
+| `changed-only` | Only check changed files (requires git) | `false` |
+| `base` | Base branch/commit for comparison | Auto-detect |
+| `parallel` | Enable parallel execution | `false` |
+| `workers` | Number of concurrent workers | `4` |
 
 ### Action Outputs
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/georg-nikola/docs-drift/internal/config"
+	"github.com/georg-nikola/docs-drift/internal/git"
 	"github.com/georg-nikola/docs-drift/internal/output"
 	"github.com/georg-nikola/docs-drift/pkg/drift"
 )
@@ -16,6 +17,11 @@ const (
 	ExitNoDrift    = 0
 	ExitDrift      = 1
 	ExitRuntimeErr = 2
+)
+
+// Default values for parallel execution
+const (
+	DefaultWorkers = 4
 )
 
 // Run executes the CLI with the given arguments and returns an exit code
@@ -54,10 +60,21 @@ Commands:
   version   Show version information
   help      Show this help message
 
+Check Options:
+  --config <path>      Path to config file (default: docs-drift.yml)
+  --verbose            Show verbose output
+  --changed-only       Only check changed markdown files (requires git)
+  --base <ref>         Base reference for --changed-only (default: auto-detect)
+  --parallel           Run code block checks in parallel
+  --workers <n>        Number of parallel workers (default: 4)
+
 Examples:
   docs-drift init
   docs-drift check
-  docs-drift check --config ./custom-config.yml`)
+  docs-drift check --config ./custom-config.yml
+  docs-drift check --changed-only
+  docs-drift check --changed-only --base main
+  docs-drift check --parallel --workers 8`)
 }
 
 func runInit(args []string) int {
@@ -108,8 +125,18 @@ func runCheck(args []string) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	configPath := fs.String("config", "docs-drift.yml", "Path to config file")
 	verbose := fs.Bool("verbose", false, "Show verbose output")
+	changedOnly := fs.Bool("changed-only", false, "Only check changed markdown files")
+	base := fs.String("base", "", "Base reference for changed-only mode (branch or commit)")
+	parallel := fs.Bool("parallel", false, "Run checks in parallel")
+	workers := fs.Int("workers", DefaultWorkers, "Number of parallel workers")
 
 	if err := fs.Parse(args); err != nil {
+		return ExitRuntimeErr
+	}
+
+	// Validate worker count
+	if *workers <= 0 {
+		fmt.Fprintf(os.Stderr, "Invalid worker count: %d (must be positive)\n", *workers)
 		return ExitRuntimeErr
 	}
 
@@ -124,23 +151,46 @@ func runCheck(args []string) int {
 	checker := drift.NewChecker(cfg, *verbose)
 
 	// Collect files to check
-	files, err := collectFiles(cfg.Docs.Paths)
+	var files []string
+	if *changedOnly {
+		files, err = collectChangedFiles(cfg.Docs.Paths, *base, *verbose)
+	} else {
+		files, err = collectFiles(cfg.Docs.Paths)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to collect files: %v\n", err)
 		return ExitRuntimeErr
 	}
 
 	if len(files) == 0 {
-		fmt.Println("No markdown files found to check")
+		if *changedOnly {
+			fmt.Println("No changed markdown files found to check")
+		} else {
+			fmt.Println("No markdown files found to check")
+		}
 		return ExitNoDrift
 	}
 
 	if *verbose {
-		fmt.Printf("Checking %d file(s)...\n", len(files))
+		mode := ""
+		if *changedOnly {
+			mode = " (changed only)"
+		}
+		if *parallel {
+			mode += fmt.Sprintf(" (parallel, %d workers)", *workers)
+		}
+		fmt.Printf("Checking %d file(s)%s...\n", len(files), mode)
 	}
 
 	// Run checks
-	results, err := checker.Check(files)
+	var results *drift.Results
+	if *parallel {
+		results, err = checker.CheckConcurrent(files, *workers)
+	} else {
+		results, err = checker.Check(files)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Check failed: %v\n", err)
 		return ExitRuntimeErr
@@ -186,6 +236,37 @@ func collectFiles(patterns []string) ([]string, error) {
 					files = append(files, absPath)
 				}
 			}
+		}
+	}
+
+	return files, nil
+}
+
+// collectChangedFiles returns only changed markdown files using git
+func collectChangedFiles(patterns []string, base string, verbose bool) ([]string, error) {
+	// Check if we're in a git repository
+	if !git.IsGitRepository() {
+		return nil, fmt.Errorf("--changed-only requires a git repository")
+	}
+
+	// Auto-detect base if not specified
+	if base == "" {
+		base = git.GetDefaultBranch()
+		if verbose {
+			fmt.Printf("Auto-detected base branch: %s\n", base)
+		}
+	}
+
+	// Get changed files
+	files, err := git.ChangedFiles(base, patterns)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get changed files: %w", err)
+	}
+
+	if verbose && len(files) > 0 {
+		fmt.Println("Changed files:")
+		for _, f := range files {
+			fmt.Printf("  %s\n", f)
 		}
 	}
 
