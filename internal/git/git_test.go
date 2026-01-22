@@ -22,11 +22,15 @@ func setupGitRepo(t *testing.T) string {
 	// Configure git user (required for commits)
 	cmd = exec.Command("git", "config", "user.email", "test@test.com")
 	cmd.Dir = tmpDir
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("failed to configure git user email: %v", err)
+	}
 
 	cmd = exec.Command("git", "config", "user.name", "Test User")
 	cmd.Dir = tmpDir
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("failed to configure git user name: %v", err)
+	}
 
 	return tmpDir
 }
@@ -61,9 +65,18 @@ func commitFile(t *testing.T, dir, filename, content string) {
 func TestIsGitRepository(t *testing.T) {
 	// Test in a git repo
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	if !IsGitRepository() {
 		t.Error("expected IsGitRepository to return true in a git repo")
@@ -71,7 +84,9 @@ func TestIsGitRepository(t *testing.T) {
 
 	// Test in a non-git directory
 	tmpDir := t.TempDir()
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
 	if IsGitRepository() {
 		t.Error("expected IsGitRepository to return false outside a git repo")
@@ -80,9 +95,18 @@ func TestIsGitRepository(t *testing.T) {
 
 func TestGetCurrentBranch(t *testing.T) {
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	// Create initial commit (required for branch to exist)
 	commitFile(t, repoDir, "README.md", "# Test")
@@ -100,9 +124,18 @@ func TestGetCurrentBranch(t *testing.T) {
 
 func TestGetDefaultBranch(t *testing.T) {
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	// Create initial commit on main
 	commitFile(t, repoDir, "README.md", "# Test")
@@ -117,15 +150,26 @@ func TestGetDefaultBranch(t *testing.T) {
 
 func TestChangedFiles_UncommittedChanges(t *testing.T) {
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	// Create initial commit
 	commitFile(t, repoDir, "README.md", "# Initial")
 
 	// Create uncommitted change
-	os.WriteFile(filepath.Join(repoDir, "CHANGED.md"), []byte("# Changed"), 0644)
+	if err := os.WriteFile(filepath.Join(repoDir, "CHANGED.md"), []byte("# Changed"), 0644); err != nil {
+		t.Fatalf("failed to create changed file: %v", err)
+	}
 
 	files, err := ChangedFiles("HEAD", []string{"*.md"})
 	if err != nil {
@@ -143,15 +187,26 @@ func TestChangedFiles_UncommittedChanges(t *testing.T) {
 
 func TestChangedFiles_ModifiedFile(t *testing.T) {
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	// Create and commit initial file
 	commitFile(t, repoDir, "README.md", "# Initial")
 
 	// Modify the file
-	os.WriteFile(filepath.Join(repoDir, "README.md"), []byte("# Modified"), 0644)
+	if err := os.WriteFile(filepath.Join(repoDir, "README.md"), []byte("# Modified"), 0644); err != nil {
+		t.Fatalf("failed to modify file: %v", err)
+	}
 
 	files, err := ChangedFiles("HEAD", []string{"*.md"})
 	if err != nil {
@@ -169,16 +224,29 @@ func TestChangedFiles_ModifiedFile(t *testing.T) {
 
 func TestChangedFiles_PatternFiltering(t *testing.T) {
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	// Create initial commit
 	commitFile(t, repoDir, "README.md", "# Initial")
 
 	// Create both .md and .txt files
-	os.WriteFile(filepath.Join(repoDir, "doc.md"), []byte("# Doc"), 0644)
-	os.WriteFile(filepath.Join(repoDir, "notes.txt"), []byte("Notes"), 0644)
+	if err := os.WriteFile(filepath.Join(repoDir, "doc.md"), []byte("# Doc"), 0644); err != nil {
+		t.Fatalf("failed to create doc.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoDir, "notes.txt"), []byte("Notes"), 0644); err != nil {
+		t.Fatalf("failed to create notes.txt: %v", err)
+	}
 
 	// Only match .md files
 	files, err := ChangedFiles("HEAD", []string{"*.md"})
@@ -200,9 +268,18 @@ func TestChangedFiles_PatternFiltering(t *testing.T) {
 
 func TestChangedFiles_NoChanges(t *testing.T) {
 	repoDir := setupGitRepo(t)
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(repoDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatalf("failed to change to repo directory: %v", err)
+	}
 
 	// Create and commit a file
 	commitFile(t, repoDir, "README.md", "# Test")
@@ -220,11 +297,20 @@ func TestChangedFiles_NoChanges(t *testing.T) {
 
 func TestChangedFiles_NotAGitRepo(t *testing.T) {
 	tmpDir := t.TempDir()
-	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Errorf("failed to restore working directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change to temp directory: %v", err)
+	}
 
-	_, err := ChangedFiles("HEAD", []string{"*.md"})
+	_, err = ChangedFiles("HEAD", []string{"*.md"})
 	if err == nil {
 		t.Error("expected error for non-git directory")
 	}
