@@ -52,7 +52,9 @@ func TestRun_Init(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	code := Run([]string{"init"}, "test")
 	if code != ExitNoDrift {
@@ -69,10 +71,14 @@ func TestRun_Init_AlreadyExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create existing file
-	os.WriteFile("docs-drift.yml", []byte("existing"), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte("existing"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 
 	code := Run([]string{"init"}, "test")
 	if code != ExitRuntimeErr {
@@ -84,10 +90,14 @@ func TestRun_Init_Force(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create existing file
-	os.WriteFile("docs-drift.yml", []byte("existing"), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte("existing"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 
 	code := Run([]string{"init", "--force"}, "test")
 	if code != ExitNoDrift {
@@ -99,7 +109,9 @@ func TestRun_Check_NoConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	code := Run([]string{"check"}, "test")
 	if code != ExitRuntimeErr {
@@ -111,7 +123,9 @@ func TestRun_Check_WithConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -123,7 +137,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	// Create a markdown file with valid code
 	readme := `# Test
@@ -131,7 +147,9 @@ checks:
 console.log("hello");
 ` + "```" + `
 `
-	os.WriteFile("README.md", []byte(readme), 0644)
+	if err := os.WriteFile("README.md", []byte(readme), 0644); err != nil {
+		t.Fatalf("failed to write README file: %v", err)
+	}
 
 	code := Run([]string{"check"}, "test")
 	if code != ExitNoDrift {
@@ -143,7 +161,9 @@ func TestRun_Check_WithDrift(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -155,7 +175,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	// Create a markdown file with broken code
 	readme := `# Test
@@ -163,7 +185,9 @@ checks:
 throw new Error("broken");
 ` + "```" + `
 `
-	os.WriteFile("README.md", []byte(readme), 0644)
+	if err := os.WriteFile("README.md", []byte(readme), 0644); err != nil {
+		t.Fatalf("failed to write README file: %v", err)
+	}
 
 	code := Run([]string{"check"}, "test")
 	if code != ExitDrift {
@@ -175,12 +199,20 @@ func TestCollectFiles_SimplePattern(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create test files
-	os.WriteFile("README.md", []byte("# README"), 0644)
-	os.WriteFile("CONTRIBUTING.md", []byte("# Contributing"), 0644)
-	os.WriteFile("main.go", []byte("package main"), 0644)
+	if err := os.WriteFile("README.md", []byte("# README"), 0644); err != nil {
+		t.Fatalf("failed to write README.md: %v", err)
+	}
+	if err := os.WriteFile("CONTRIBUTING.md", []byte("# Contributing"), 0644); err != nil {
+		t.Fatalf("failed to write CONTRIBUTING.md: %v", err)
+	}
+	if err := os.WriteFile("main.go", []byte("package main"), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
 
 	files, err := collectFiles([]string{"*.md"})
 	if err != nil {
@@ -196,12 +228,20 @@ func TestCollectFiles_Subdirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create subdirectory with files
-	os.MkdirAll("docs", 0755)
-	os.WriteFile("README.md", []byte("# README"), 0644)
-	os.WriteFile(filepath.Join("docs", "guide.md"), []byte("# Guide"), 0644)
+	if err := os.MkdirAll("docs", 0755); err != nil {
+		t.Fatalf("failed to create directory: %v", err)
+	}
+	if err := os.WriteFile("README.md", []byte("# README"), 0644); err != nil {
+		t.Fatalf("failed to write README.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join("docs", "guide.md"), []byte("# Guide"), 0644); err != nil {
+		t.Fatalf("failed to write guide.md: %v", err)
+	}
 
 	files, err := collectFiles([]string{"*.md", "docs/*.md"})
 	if err != nil {
@@ -217,9 +257,13 @@ func TestCollectFiles_NoDuplicates(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
-	os.WriteFile("README.md", []byte("# README"), 0644)
+	if err := os.WriteFile("README.md", []byte("# README"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 
 	// Same file matched by multiple patterns
 	files, err := collectFiles([]string{"*.md", "README.md"})
@@ -236,7 +280,9 @@ func TestCollectFiles_NoMatches(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	files, err := collectFiles([]string{"*.md"})
 	if err != nil {
@@ -252,7 +298,9 @@ func TestRun_Check_Parallel(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -264,7 +312,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	// Create markdown files with valid code
 	readme := `# Test
@@ -272,8 +322,12 @@ checks:
 console.log("hello");
 ` + "```" + `
 `
-	os.WriteFile("README.md", []byte(readme), 0644)
-	os.WriteFile("GUIDE.md", []byte(readme), 0644)
+	if err := os.WriteFile("README.md", []byte(readme), 0644); err != nil {
+		t.Fatalf("failed to write README.md: %v", err)
+	}
+	if err := os.WriteFile("GUIDE.md", []byte(readme), 0644); err != nil {
+		t.Fatalf("failed to write GUIDE.md: %v", err)
+	}
 
 	code := Run([]string{"check", "--parallel"}, "test")
 	if code != ExitNoDrift {
@@ -285,7 +339,9 @@ func TestRun_Check_ParallelWithWorkers(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -297,7 +353,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	// Create markdown file with valid code
 	readme := `# Test
@@ -305,7 +363,9 @@ checks:
 console.log("hello");
 ` + "```" + `
 `
-	os.WriteFile("README.md", []byte(readme), 0644)
+	if err := os.WriteFile("README.md", []byte(readme), 0644); err != nil {
+		t.Fatalf("failed to write README.md: %v", err)
+	}
 
 	code := Run([]string{"check", "--parallel", "--workers", "2"}, "test")
 	if code != ExitNoDrift {
@@ -317,7 +377,9 @@ func TestRun_Check_InvalidWorkers(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -329,7 +391,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	code := Run([]string{"check", "--workers", "0"}, "test")
 	if code != ExitRuntimeErr {
@@ -341,7 +405,9 @@ func TestRun_Check_ChangedOnlyNotGitRepo(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -353,7 +419,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	// Not a git repo, so --changed-only should fail
 	code := Run([]string{"check", "--changed-only"}, "test")
@@ -366,7 +434,9 @@ func TestRun_Check_Verbose(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
 	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("failed to change directory: %v", err)
+	}
 
 	// Create config
 	config := `version: 1
@@ -378,7 +448,9 @@ checks:
     enabled: true
     languages: [javascript]
 `
-	os.WriteFile("docs-drift.yml", []byte(config), 0644)
+	if err := os.WriteFile("docs-drift.yml", []byte(config), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 
 	// Create markdown file with valid code
 	readme := `# Test
@@ -386,7 +458,9 @@ checks:
 console.log("hello");
 ` + "```" + `
 `
-	os.WriteFile("README.md", []byte(readme), 0644)
+	if err := os.WriteFile("README.md", []byte(readme), 0644); err != nil {
+		t.Fatalf("failed to write README.md: %v", err)
+	}
 
 	code := Run([]string{"check", "--verbose"}, "test")
 	if code != ExitNoDrift {
