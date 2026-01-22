@@ -297,6 +297,6 @@ func GetRuntimeVersion(language string) (string, error) {
 // TempDir returns a secure temporary directory for code execution
 func TempDir() string {
 	dir := filepath.Join(os.TempDir(), "docs-drift")
-	os.MkdirAll(dir, 0700)
+	_ = os.MkdirAll(dir, 0700) // Best effort: ignore error as temp dir should always be writable
 	return dir
 }
