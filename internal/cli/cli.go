@@ -67,6 +67,7 @@ Check Options:
   --base <ref>         Base reference for --changed-only (default: auto-detect)
   --parallel           Run code block checks in parallel
   --workers <n>        Number of parallel workers (default: 4)
+  --format <format>    Output format: text, json, html (default: text)
 
 Examples:
   docs-drift init
@@ -129,8 +130,15 @@ func runCheck(args []string) int {
 	base := fs.String("base", "", "Base reference for changed-only mode (branch or commit)")
 	parallel := fs.Bool("parallel", false, "Run checks in parallel")
 	workers := fs.Int("workers", DefaultWorkers, "Number of parallel workers")
+	format := fs.String("format", "text", "Output format (text, json, html)")
 
 	if err := fs.Parse(args); err != nil {
+		return ExitRuntimeErr
+	}
+
+	// Validate format parameter
+	if *format != "text" && *format != "json" && *format != "html" {
+		fmt.Fprintf(os.Stderr, "Invalid format: %s (must be text, json, or html)\n", *format)
 		return ExitRuntimeErr
 	}
 
@@ -196,8 +204,25 @@ func runCheck(args []string) int {
 		return ExitRuntimeErr
 	}
 
-	// Output results
-	output.PrintResults(results, *verbose)
+	// Output results based on format
+	switch *format {
+	case "json":
+		jsonOutput, err := output.FormatJSON(results)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to format JSON: %v\n", err)
+			return ExitRuntimeErr
+		}
+		fmt.Println(jsonOutput)
+	case "html":
+		htmlOutput, err := output.FormatHTML(results)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to format HTML: %v\n", err)
+			return ExitRuntimeErr
+		}
+		fmt.Println(htmlOutput)
+	default:
+		output.PrintResults(results, *verbose)
+	}
 
 	if results.HasDrift() {
 		return ExitDrift

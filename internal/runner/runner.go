@@ -31,6 +31,12 @@ func NewRunner(language string, timeout time.Duration) (Runner, error) {
 		return &JavaScriptRunner{timeout: timeout}, nil
 	case "python", "py":
 		return &PythonRunner{timeout: timeout}, nil
+	case "bash", "sh", "shell":
+		return &BashRunner{timeout: timeout}, nil
+	case "go", "golang":
+		return &GoRunner{timeout: timeout}, nil
+	case "ruby", "rb":
+		return &RubyRunner{timeout: timeout}, nil
 	default:
 		return nil, fmt.Errorf("unsupported language: %s", language)
 	}
@@ -181,6 +187,253 @@ func (r *PythonRunner) Run(ctx context.Context, code string) Result {
 	}
 }
 
+// BashRunner executes Bash/Shell scripts
+type BashRunner struct {
+	timeout time.Duration
+}
+
+func (r *BashRunner) Language() string {
+	return "bash"
+}
+
+func (r *BashRunner) Run(ctx context.Context, code string) Result {
+	start := time.Now()
+
+	// Create temp file with .sh extension
+	tmpFile, err := os.CreateTemp("", "docs-drift-*.sh")
+	if err != nil {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to create temp file: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+	defer os.Remove(tmpFile.Name())
+
+	// Add shebang and error handling
+	// set -e: exit on first error
+	script := "#!/bin/bash\nset -e\n" + code
+
+	if _, err := tmpFile.WriteString(script); err != nil {
+		tmpFile.Close()
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to write script: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+	tmpFile.Close()
+
+	// Make executable
+	if err := os.Chmod(tmpFile.Name(), 0700); err != nil {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to make script executable: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+
+	// Execute with bash
+	cmd := exec.CommandContext(ctx, "bash", tmpFile.Name())
+	cmd.Env = restrictedEnv()
+
+	output, err := cmd.CombinedOutput()
+	duration := time.Since(start)
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("execution timed out after %s", r.timeout),
+			Duration: duration,
+		}
+	}
+
+	if err != nil {
+		return Result{
+			Success:  false,
+			Output:   string(output),
+			Error:    extractError(string(output)),
+			Duration: duration,
+		}
+	}
+
+	return Result{
+		Success:  true,
+		Output:   string(output),
+		Duration: duration,
+	}
+}
+
+// GoRunner executes Go code
+type GoRunner struct {
+	timeout time.Duration
+}
+
+func (r *GoRunner) Language() string {
+	return "go"
+}
+
+func (r *GoRunner) Run(ctx context.Context, code string) Result {
+	start := time.Now()
+
+	// Create temp directory for Go module
+	tmpDir, err := os.MkdirTemp("", "docs-drift-go-*")
+	if err != nil {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to create temp directory: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create minimal go.mod
+	goModContent := `module docsdrift/temp
+
+go 1.22
+`
+	goModPath := filepath.Join(tmpDir, "go.mod")
+	if err := os.WriteFile(goModPath, []byte(goModContent), 0644); err != nil {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to create go.mod: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	// Wrap code if it doesn't have package declaration
+	finalCode := code
+	if !strings.Contains(code, "package main") {
+		// Auto-detect common imports needed
+		imports := ""
+		if strings.Contains(code, "fmt.") {
+			imports += `import "fmt"`
+		}
+		if imports != "" {
+			imports += "\n\n"
+		}
+		finalCode = "package main\n\n" + imports + "func main() {\n" + code + "\n}\n"
+	}
+
+	// Write main.go
+	mainGoPath := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(mainGoPath, []byte(finalCode), 0644); err != nil {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to create main.go: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+
+	// Execute with go run
+	cmd := exec.CommandContext(ctx, "go", "run", "main.go")
+	cmd.Dir = tmpDir
+	cmd.Env = restrictedEnv()
+
+	output, err := cmd.CombinedOutput()
+	duration := time.Since(start)
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("execution timed out after %s", r.timeout),
+			Duration: duration,
+		}
+	}
+
+	if err != nil {
+		return Result{
+			Success:  false,
+			Output:   string(output),
+			Error:    extractError(string(output)),
+			Duration: duration,
+		}
+	}
+
+	return Result{
+		Success:  true,
+		Output:   string(output),
+		Duration: duration,
+	}
+}
+
+// RubyRunner executes Ruby code
+type RubyRunner struct {
+	timeout time.Duration
+}
+
+func (r *RubyRunner) Language() string {
+	return "ruby"
+}
+
+func (r *RubyRunner) Run(ctx context.Context, code string) Result {
+	start := time.Now()
+
+	// Create temp file with .rb extension
+	tmpFile, err := os.CreateTemp("", "docs-drift-*.rb")
+	if err != nil {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to create temp file: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+	defer os.Remove(tmpFile.Name())
+
+	// Write code to temp file
+	if _, err := tmpFile.WriteString(code); err != nil {
+		tmpFile.Close()
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("failed to write code: %v", err),
+			Duration: time.Since(start),
+		}
+	}
+	tmpFile.Close()
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+
+	// Execute with ruby
+	cmd := exec.CommandContext(ctx, "ruby", tmpFile.Name())
+	cmd.Env = restrictedEnv()
+
+	output, err := cmd.CombinedOutput()
+	duration := time.Since(start)
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return Result{
+			Success:  false,
+			Error:    fmt.Sprintf("execution timed out after %s", r.timeout),
+			Duration: duration,
+		}
+	}
+
+	if err != nil {
+		return Result{
+			Success:  false,
+			Output:   string(output),
+			Error:    extractError(string(output)),
+			Duration: duration,
+		}
+	}
+
+	return Result{
+		Success:  true,
+		Output:   string(output),
+		Duration: duration,
+	}
+}
+
 // restrictedEnv creates a minimal environment that restricts network access
 func restrictedEnv() []string {
 	// Get temp directory for file operations
@@ -234,6 +487,54 @@ func extractError(output string) string {
 				}
 			}
 		}
+
+		// Bash errors
+		if strings.Contains(line, ": line ") ||
+			strings.Contains(line, "bash:") ||
+			strings.Contains(line, "command not found") ||
+			strings.Contains(line, "No such file or directory") {
+			return line
+		}
+
+		// Go compile errors
+		if strings.Contains(line, "# command-line-arguments") {
+			// For Go compile errors, return the actual error line, not the package line
+			for j := i + 1; j < len(lines); j++ {
+				errLine := strings.TrimSpace(lines[j])
+				if errLine != "" && !strings.HasPrefix(errLine, "#") {
+					return errLine
+				}
+			}
+			return line
+		}
+
+		// Go panic errors - look for the panic line specifically
+		if strings.HasPrefix(line, "panic:") {
+			return line
+		}
+
+		// Go fatal errors
+		if strings.Contains(line, "fatal error:") {
+			return line
+		}
+
+		// Ruby errors
+		if strings.Contains(line, "Error") ||
+			strings.Contains(line, "Exception") ||
+			strings.Contains(line, "undefined method") ||
+			strings.Contains(line, "uninitialized constant") ||
+			strings.Contains(line, "wrong number of arguments") ||
+			strings.Contains(line, ".rb:") {
+			return line
+		}
+	}
+
+	// Special handling for Go panics - search for panic: at the beginning of a line
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(line, "panic:") {
+			return line
+		}
 	}
 
 	// Fall back to last non-empty line
@@ -254,6 +555,12 @@ func CheckRuntime(language string) error {
 		return checkCommand("node", "--version")
 	case "python", "py":
 		return checkCommand("python3", "--version")
+	case "bash", "sh", "shell":
+		return checkCommand("bash", "--version")
+	case "go", "golang":
+		return checkCommand("go", "version")
+	case "ruby", "rb":
+		return checkCommand("ruby", "--version")
 	default:
 		return fmt.Errorf("unknown language: %s", language)
 	}
@@ -282,6 +589,12 @@ func GetRuntimeVersion(language string) (string, error) {
 		cmd = exec.Command("node", "--version")
 	case "python", "py":
 		cmd = exec.Command("python3", "--version")
+	case "bash", "sh", "shell":
+		cmd = exec.Command("bash", "--version")
+	case "go", "golang":
+		cmd = exec.Command("go", "version")
+	case "ruby", "rb":
+		cmd = exec.Command("ruby", "--version")
 	default:
 		return "", fmt.Errorf("unknown language: %s", language)
 	}

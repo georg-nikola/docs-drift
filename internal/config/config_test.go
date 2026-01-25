@@ -177,7 +177,7 @@ func TestIsLanguageEnabled(t *testing.T) {
 	cfg := &Config{
 		Checks: ChecksConfig{
 			CodeBlocks: CodeBlocksConfig{
-				Languages: []string{"javascript", "python"},
+				Languages: []string{"javascript", "python", "bash", "go", "ruby"},
 			},
 		},
 	}
@@ -190,8 +190,14 @@ func TestIsLanguageEnabled(t *testing.T) {
 		{"js", true},
 		{"python", true},
 		{"py", true},
+		{"bash", true},
+		{"sh", true},
+		{"shell", true},
+		{"go", true},
+		{"golang", true},
+		{"ruby", true},
+		{"rb", true},
 		{"rust", false},
-		{"go", false},
 	}
 
 	for _, tt := range tests {
@@ -213,6 +219,13 @@ func TestNormalizeLanguage(t *testing.T) {
 		{"js", "javascript"},
 		{"python", "python"},
 		{"py", "python"},
+		{"bash", "bash"},
+		{"sh", "bash"},
+		{"shell", "bash"},
+		{"go", "go"},
+		{"golang", "go"},
+		{"ruby", "ruby"},
+		{"rb", "ruby"},
 		{"rust", "rust"},
 	}
 

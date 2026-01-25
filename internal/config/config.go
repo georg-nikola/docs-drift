@@ -91,11 +91,18 @@ func (c *Config) Validate() error {
 		"js":         true,
 		"python":     true,
 		"py":         true,
+		"bash":       true,
+		"sh":         true,
+		"shell":      true,
+		"go":         true,
+		"golang":     true,
+		"ruby":       true,
+		"rb":         true,
 	}
 
 	for _, lang := range c.Checks.CodeBlocks.Languages {
 		if !supportedLangs[lang] {
-			return fmt.Errorf("unsupported language: %s (supported: javascript, python)", lang)
+			return fmt.Errorf("unsupported language: %s (supported: javascript, python, bash, go, ruby)", lang)
 		}
 	}
 
@@ -126,6 +133,12 @@ func NormalizeLanguage(lang string) string {
 		return "javascript"
 	case "py", "python":
 		return "python"
+	case "bash", "sh", "shell":
+		return "bash"
+	case "go", "golang":
+		return "go"
+	case "ruby", "rb":
+		return "ruby"
 	default:
 		return lang
 	}
