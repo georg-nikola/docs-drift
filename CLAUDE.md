@@ -216,7 +216,7 @@ The tool requires a `docs-drift.yml` file:
 - `version`: must be 1
 - `docs.paths`: glob patterns for markdown files
 - `checks.code_blocks.enabled`: whether to validate code blocks
-- `checks.code_blocks.languages`: list of languages to validate (javascript/js, python/py)
+- `checks.code_blocks.languages`: list of languages to validate (javascript/js, python/py, bash/sh/shell, go/golang, ruby/rb)
 - `checks.code_blocks.timeout`: execution timeout per block (e.g., "30s")
 
 ## Requirements
@@ -224,6 +224,10 @@ The tool requires a `docs-drift.yml` file:
 - Go 1.21+ for building
 - Node.js for JavaScript validation
 - Python 3 for Python validation
+- Bash for Bash/Shell validation
+- Ruby for Ruby validation
+
+**Note**: Only the runtimes for languages specified in your configuration are required.
 
 ## Implementation Status
 
@@ -274,29 +278,77 @@ All v0.2 features have been successfully implemented and tested:
   - Memory allocation profiling support
   - Demonstrates measurable performance improvements with parallel execution
 
+### v0.3 - COMPLETE ✅
+
+All v0.3 features have been successfully implemented and tested:
+
+#### Additional Language Runners and Output Formats Delivered
+- ✅ **Bash/Shell Runner** - Support for shell script validation
+  - Executes bash scripts with automatic `#!/bin/bash` shebang
+  - Uses `set -e` to fail on first error
+  - Supports `bash`, `sh`, and `shell` language tags
+  - 7 comprehensive tests covering success, errors, timeouts, and variables
+
+- ✅ **Go Runner** - Support for Go code validation
+  - Auto-wraps code without `package main` declaration
+  - Smart `fmt` import detection and injection
+  - Creates temporary Go module for execution
+  - Supports `go` and `golang` language tags
+  - 6 comprehensive tests covering compilation and runtime errors
+
+- ✅ **Ruby Runner** - Support for Ruby code validation
+  - Executes Ruby scripts with standard `.rb` extension
+  - Enhanced error extraction for Ruby-specific errors
+  - Supports `ruby` and `rb` language tags
+  - 7 comprehensive tests covering syntax, runtime, and undefined method errors
+
+- ✅ **JSON Output Format** - Structured output for tool integration
+  - `--format json` flag generates structured JSON output
+  - Includes version, timestamp, summary statistics, and detailed failures
+  - Perfect for CI/CD pipelines and automation workflows
+  - Full test coverage with 4 tests
+
+- ✅ **HTML Report Generation** - Self-contained HTML reports
+  - `--format html` flag generates standalone HTML reports with embedded CSS
+  - Color-coded status indicators and collapsible sections
+  - Suitable for CI artifacts and offline viewing
+  - Proper HTML escaping for security
+  - Full test coverage with 5 tests
+
+#### Configuration and Testing Updates
+- ✅ Updated `internal/config/config.go` to support new languages (bash, go, ruby)
+- ✅ Enhanced language normalization for new aliases
+- ✅ Updated config validation with comprehensive error messages
+- ✅ Added 20+ new tests across runner and config packages
+- ✅ All 140+ tests passing across all packages
+- ✅ Updated CLI help text with `--format` flag documentation
+
 ## Roadmap & Next Steps
 
 Reference `~/Downloads/docs-drift-implementation-docs/09_ROADMAP.md` for the complete roadmap.
 
-### v0.3 - Planned Features (Next)
+**Current Version**: v0.3 ✅
+**Next Version**: v0.4 (Planned)
+
+### v0.4 - Planned Features (Next)
 
 1. **Additional language runners**
-   - Shell/Bash (`#!/bin/bash` or `bash` language tag)
-   - Ruby (`ruby` command)
-   - PHP (`php` command)
-   - Go itself (`go run` with temp module)
+   - PHP (`php` command with `.php` extension)
+   - TypeScript (`ts-node` or `deno` command)
+   - Rust (`rustc` with temporary project)
 
 2. **Result caching**
    - Cache parse results to avoid re-parsing unchanged files
    - Track file hashes for incremental validation
    - Persistent cache across runs for faster local development
+   - `--cache` flag to enable caching mode
 
-3. **Enhanced error reporting**
-   - HTML report generation for CI artifacts
-   - JSON output format for tool integration
-   - Detailed statistics and summaries
+3. **Enhanced statistics**
+   - Execution time tracking per code block
+   - Performance metrics and bottleneck identification
+   - Summary report with average execution times
 
-### v0.4+ - Future Ideas
+### v0.5+ - Future Ideas
 - Watch mode for local development (`--watch` flag)
 - Custom runner commands in config (specify arbitrary executables)
 - IDE integrations (VS Code extension for live feedback)
@@ -748,8 +800,8 @@ echo '```javascript\ntest\n```' >> test.md
 
 ---
 
-**Last Updated**: 2026-01-22
-**Current Version**: v0.2
-**Next Version**: v0.3 (in planning)
+**Last Updated**: 2026-01-25
+**Current Version**: v0.3
+**Next Version**: v0.4 (in planning)
 
 *Keep this file updated as the project evolves. It serves as the single source of truth for Claude Code sessions.*

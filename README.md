@@ -10,7 +10,8 @@ Documentation gets out of sync with code. Code examples in README files break si
 
 ## Features
 
-- Validates JavaScript and Python code blocks in Markdown files
+- Validates JavaScript, Python, Bash, Go, and Ruby code blocks in Markdown files
+- **Multiple output formats**: Text, JSON, and HTML reports
 - Runs in CI/CD pipelines via GitHub Action
 - **Git integration**: Only check changed files in CI for faster validation
 - **Parallel execution**: Concurrent code block checking for improved performance
@@ -64,8 +65,11 @@ checks:
   code_blocks:
     enabled: true
     languages:
-      - javascript
-      - python
+      - javascript  # Node.js required
+      - python      # Python 3 required
+      - bash        # Bash required
+      - go          # Go required
+      - ruby        # Ruby required
     timeout: 30s
 ```
 
@@ -111,9 +115,76 @@ docs-drift check --parallel --workers 8
 # Combine flags for optimal CI performance
 docs-drift check --changed-only --parallel --workers 4
 
+# Generate JSON output
+docs-drift check --format json
+
+# Generate HTML report
+docs-drift check --format html
+
 # Show version
 docs-drift version
 ```
+
+### Output Formats
+
+docs-drift supports multiple output formats to integrate with different workflows:
+
+#### Text (Default)
+
+Human-readable colored output for terminal use:
+
+```
+Docs Drift Detected
+
+README.md
+  Line 42: javascript code block
+    -> ReferenceError: undefinedVar is not defined
+
+Summary: 1 failed, 5 passed
+```
+
+#### JSON
+
+Structured output for tool integration and automation:
+
+```bash
+docs-drift check --format json
+```
+
+```json
+{
+  "version": "1",
+  "timestamp": "2026-01-25T10:30:00Z",
+  "summary": {
+    "total": 6,
+    "passed": 5,
+    "failed": 1,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "file": "README.md",
+      "line": 42,
+      "language": "javascript",
+      "error": "ReferenceError: undefinedVar is not defined"
+    }
+  ]
+}
+```
+
+#### HTML
+
+Self-contained HTML report with embedded CSS for CI artifacts:
+
+```bash
+docs-drift check --format html > report.html
+```
+
+The HTML report includes:
+- Summary statistics with color-coded status
+- Detailed failure information with file paths and line numbers
+- Collapsible sections for easy navigation
+- Embedded CSS for offline viewing
 
 ### Exit Codes
 
@@ -207,7 +278,7 @@ jobs:
         with:
           fetch-depth: 0  # Required for --changed-only mode
 
-      - uses: georg-nikola/docs-drift@v0.2
+      - uses: georg-nikola/docs-drift@v0.3
         with:
           config: docs-drift.yml
 ```
@@ -231,7 +302,7 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for git comparison
 
-      - uses: georg-nikola/docs-drift@v0.2
+      - uses: georg-nikola/docs-drift@v0.3
         with:
           config: docs-drift.yml
           changed-only: true
@@ -251,6 +322,7 @@ jobs:
 | `base` | Base branch/commit for comparison | Auto-detect |
 | `parallel` | Enable parallel execution | `false` |
 | `workers` | Number of concurrent workers | `4` |
+| `format` | Output format (text, json, html) | `text` |
 
 ### Action Outputs
 
@@ -282,6 +354,10 @@ Summary: 2 failed, 5 passed
 - Go 1.21+ (for building)
 - Node.js (for JavaScript validation)
 - Python 3 (for Python validation)
+- Bash (for Bash/Shell validation)
+- Ruby (for Ruby validation)
+
+**Note**: Only the runtimes for languages specified in your configuration are required. For example, if you only validate JavaScript and Python, you don't need Bash, Go, or Ruby installed.
 
 ## Supported Languages
 
@@ -289,6 +365,9 @@ Summary: 2 failed, 5 passed
 |----------|---------|---------|
 | JavaScript | Node.js | `javascript`, `js` |
 | Python | Python 3 | `python`, `py` |
+| Bash/Shell | bash | `bash`, `sh`, `shell` |
+| Go | go | `go`, `golang` |
+| Ruby | ruby | `ruby`, `rb` |
 
 ## Security
 
