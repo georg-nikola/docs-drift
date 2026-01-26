@@ -485,7 +485,8 @@ func TestGoRunner_Success(t *testing.T) {
 		t.Skip("Go not available:", err)
 	}
 
-	r := &GoRunner{timeout: 5 * time.Second}
+	// Use longer timeout for first Go run (toolchain setup can be slow on some platforms)
+	r := &GoRunner{timeout: 15 * time.Second}
 	result := r.Run(context.Background(), `fmt.Println("Hello from Go")`)
 
 	if !result.Success {
@@ -509,7 +510,7 @@ func main() {
 	fmt.Println("Complete Go program")
 }`
 
-	r := &GoRunner{timeout: 5 * time.Second}
+	r := &GoRunner{timeout: 15 * time.Second}
 	result := r.Run(context.Background(), code)
 
 	if !result.Success {
@@ -525,7 +526,7 @@ func TestGoRunner_CompileError(t *testing.T) {
 		t.Skip("Go not available:", err)
 	}
 
-	r := &GoRunner{timeout: 5 * time.Second}
+	r := &GoRunner{timeout: 15 * time.Second}
 	// Use undeclared variable instead of missing import
 	result := r.Run(context.Background(), `x := undeclaredVariable`)
 
@@ -548,7 +549,7 @@ func main() {
 	panic("runtime error")
 }`
 
-	r := &GoRunner{timeout: 5 * time.Second}
+	r := &GoRunner{timeout: 15 * time.Second}
 	result := r.Run(context.Background(), code)
 
 	if result.Success {
