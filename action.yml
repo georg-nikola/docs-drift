@@ -19,6 +19,26 @@ inputs:
     description: 'Enable verbose output'
     required: false
     default: 'false'
+  changed-only:
+    description: 'Only check changed markdown files (requires git)'
+    required: false
+    default: 'false'
+  base:
+    description: 'Base branch/commit for changed-only mode (auto-detects main/master if not specified)'
+    required: false
+    default: ''
+  parallel:
+    description: 'Enable parallel execution'
+    required: false
+    default: 'false'
+  workers:
+    description: 'Number of parallel workers (default: 4)'
+    required: false
+    default: '4'
+  format:
+    description: 'Output format: text, json, or html'
+    required: false
+    default: 'text'
 
 outputs:
   drift-detected:
@@ -61,13 +81,34 @@ runs:
       id: check
       shell: bash
       run: |
-        VERBOSE_FLAG=""
+        FLAGS="--config ${{ inputs.config }}"
+
         if [ "${{ inputs.verbose }}" = "true" ]; then
-          VERBOSE_FLAG="--verbose"
+          FLAGS="$FLAGS --verbose"
+        fi
+
+        if [ "${{ inputs.changed-only }}" = "true" ]; then
+          FLAGS="$FLAGS --changed-only"
+        fi
+
+        if [ -n "${{ inputs.base }}" ]; then
+          FLAGS="$FLAGS --base ${{ inputs.base }}"
+        fi
+
+        if [ "${{ inputs.parallel }}" = "true" ]; then
+          FLAGS="$FLAGS --parallel"
+        fi
+
+        if [ -n "${{ inputs.workers }}" ] && [ "${{ inputs.workers }}" != "4" ]; then
+          FLAGS="$FLAGS --workers ${{ inputs.workers }}"
+        fi
+
+        if [ "${{ inputs.format }}" != "text" ]; then
+          FLAGS="$FLAGS --format ${{ inputs.format }}"
         fi
 
         set +e
-        docs-drift check --config "${{ inputs.config }}" $VERBOSE_FLAG
+        docs-drift check $FLAGS
         EXIT_CODE=$?
         set -e
 

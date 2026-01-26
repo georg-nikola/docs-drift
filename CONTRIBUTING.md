@@ -6,9 +6,16 @@ Thank you for your interest in contributing to docs-drift!
 
 ### Prerequisites
 
+**Required:**
 - Go 1.21 or later
-- Node.js (for running JavaScript tests)
-- Python 3 (for running Python tests)
+
+**Optional (for running language-specific tests):**
+- Node.js (for JavaScript runner tests)
+- Python 3 (for Python runner tests)
+- Bash (for Bash/Shell runner tests)
+- Ruby (for Ruby runner tests)
+
+**Note:** You only need the language runtimes for the runners you're working on. All tests will skip if the required runtime is not available.
 
 ### Getting Started
 
@@ -34,14 +41,18 @@ docs-drift/
 ├── cmd/docs-drift/     # CLI entry point
 ├── internal/           # Private packages
 │   ├── cli/           # CLI command handling
-│   ├── config/        # Configuration loading
-│   ├── output/        # Output formatting
-│   ├── parser/        # Markdown parsing
-│   └── runner/        # Language runners
+│   ├── config/        # Configuration loading and validation
+│   ├── git/           # Git integration for changed-only mode
+│   ├── output/        # Output formatting (text, JSON, HTML)
+│   ├── parser/        # Markdown parsing and code block extraction
+│   └── runner/        # Language runners (JS, Python, Bash, Go, Ruby)
 ├── pkg/drift/         # Public API
 ├── testdata/          # Test fixtures
+├── .github/           # GitHub Actions workflows
+│   └── workflows/     # CI and release workflows
 ├── action.yml         # GitHub Action definition
-└── docs-drift.yml     # Example config
+├── docs-drift.yml     # Example config
+└── CHANGELOG.md       # Version history
 ```
 
 ## Making Changes

@@ -4,14 +4,23 @@
 version: 1
 
 docs:
+  # Glob patterns for markdown files to check
   paths:
     - README.md
+    - CONTRIBUTING.md
+    - docs/**/*.md
     - testdata/example.md
 
 checks:
   code_blocks:
     enabled: true
+    # Supported languages: javascript, python, bash, go, ruby
+    # Only include languages you actually use in your documentation
     languages:
-      - javascript
-      - python
+      - javascript  # Requires Node.js
+      - python      # Requires Python 3
+      # - bash      # Requires Bash (uncomment if you have shell examples)
+      # - go        # Requires Go (uncomment if you have Go examples)
+      # - ruby      # Requires Ruby (uncomment if you have Ruby examples)
+    # Maximum time allowed for each code block to execute
     timeout: 30s
