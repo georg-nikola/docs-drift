@@ -1,0 +1,129 @@
+# GoReleaser configuration for docs-drift
+# See https://goreleaser.com for documentation
+
+version: 2
+
+before:
+  hooks:
+    # Ensure dependencies are up to date
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: docs-drift
+    binary: docs-drift
+    main: ./cmd/docs-drift
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: docs-drift
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+      - docs-drift.yml
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: 'New Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance Improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: 'Documentation'
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: 'Other Changes'
+      order: 999
+
+release:
+  github:
+    owner: georg-nikola
+    name: docs-drift
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## docs-drift {{ .Tag }}
+
+    Detect documentation drift by validating code examples in Markdown files.
+
+    ### Installation
+
+    Download the appropriate binary for your platform below, extract it, and add it to your PATH.
+
+    Alternatively, install via Go:
+    ```bash
+    go install github.com/georg-nikola/docs-drift/cmd/docs-drift@{{ .Tag }}
+    ```
+
+    ### What's Changed
+  footer: |
+    **Full Changelog**: https://github.com/georg-nikola/docs-drift/blob/main/CHANGELOG.md
+
+    ## Verify Downloads
+
+    All binaries are checksummed. Verify with:
+    ```bash
+    sha256sum -c checksums.txt
+    ```
+
+# Homebrew tap (optional - uncomment if you create a tap)
+# brews:
+#   - name: docs-drift
+#     homepage: https://github.com/georg-nikola/docs-drift
+#     description: "Detect documentation drift by validating code examples"
+#     repository:
+#       owner: georg-nikola
+#       name: homebrew-tap
+#     license: MIT
+#     install: |
+#       bin.install "docs-drift"
+
+# Announce release (optional)
+# announce:
+#   twitter:
+#     enabled: false
+#   mastodon:
+#     enabled: false
