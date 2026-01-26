@@ -1,8 +1,6 @@
 # GoReleaser configuration for docs-drift
 # See https://goreleaser.com for documentation
 
-version: 2
-
 before:
   hooks:
     # Ensure dependencies are up to date
@@ -53,7 +51,6 @@ checksum:
 
 changelog:
   sort: asc
-  use: github
   filters:
     exclude:
       - '^docs:'
