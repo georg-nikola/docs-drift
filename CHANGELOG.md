@@ -5,6 +5,30 @@ All notable changes to docs-drift will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-01-27
+
+### Added
+- **EULA.md**: Comprehensive End User License Agreement for GitHub Marketplace
+  - Explicit code execution notices and user acknowledgments
+  - Security measures and limitations documentation
+  - Data privacy guarantees (no collection, no transmission)
+  - Satisfies GitHub Marketplace Terms requirements
+- **SECURITY.md**: Security policy and responsible disclosure process
+  - Intentional code execution explanation (by design)
+  - Five layers of security protection documentation
+  - Vulnerability reporting guidelines with response timeline
+  - Best practices for secure usage
+  - Known limitations and transparency commitments
+- **Security Documentation in README**: Enhanced security section
+  - Status badges (release, CI, license, Go Report Card)
+  - Execution safety principles and best practices
+  - Link to security reporting process
+
+### Documentation
+- Prepared repository for official GitHub Marketplace publishing
+- Added legal protections against potential misunderstandings about intentional code execution
+- Enhanced transparency and security-by-design communication
+
 ## [0.3.0] - 2026-01-25
 
 ### Added
@@ -115,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI pipeline with automated testing
 - Race condition detection
 
+[0.3.1]: https://github.com/georg-nikola/docs-drift/releases/tag/v0.3.1
 [0.3.0]: https://github.com/georg-nikola/docs-drift/releases/tag/v0.3.0
 [0.2.0]: https://github.com/georg-nikola/docs-drift/releases/tag/v0.2.0
 [0.1.0]: https://github.com/georg-nikola/docs-drift/releases/tag/v0.1.0
