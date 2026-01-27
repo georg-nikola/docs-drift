@@ -1,5 +1,10 @@
 # docs-drift
 
+[![GitHub release](https://img.shields.io/github/v/release/georg-nikola/docs-drift)](https://github.com/georg-nikola/docs-drift/releases)
+[![CI](https://github.com/georg-nikola/docs-drift/workflows/CI/badge.svg)](https://github.com/georg-nikola/docs-drift/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Report Card](https://goreportcard.com/badge/github.com/georg-nikola/docs-drift)](https://goreportcard.com/report/github.com/georg-nikola/docs-drift)
+
 CLI and GitHub Action that detects documentation drift by validating code examples in Markdown files.
 
 ## Why docs-drift?
@@ -18,6 +23,38 @@ Documentation gets out of sync with code. Code examples in README files break si
 - Fast, local-first, deterministic
 - No SaaS, no telemetry
 - Skip specific code blocks with `docs-drift:skip` directive
+
+## Security
+
+**By Design:** docs-drift intentionally executes code examples from your documentation to validate they work correctly. This is the core functionality, not a vulnerability.
+
+### Execution Safety
+
+All code execution follows these security principles:
+
+1. **Isolated Processes**: Code runs in separate OS processes, not in the GitHub Actions runner directly
+2. **Resource Limits**: Each code block has a configurable timeout (default: 30s)
+3. **Restricted Environment**:
+   - Limited environment variables
+   - No network access by default (Node.js and Python isolated modes)
+   - Temporary file cleanup after execution
+4. **User Control**: You control what code is validated via your configuration
+5. **Local First**: All validation happens in your CI environment, no external services
+6. **Open Source**: Fully auditable code with no hidden functionality
+
+### Best Practices
+
+- Only use docs-drift in repositories you control
+- Review your documentation code examples before validation
+- Use `docs-drift:skip` directive for examples that shouldn't be executed
+- Consider using `--changed-only` to limit validation scope in PRs
+- Never include secrets or credentials in documentation examples
+
+### Reporting Security Issues
+
+If you discover a security vulnerability, please report it responsibly:
+- Use [GitHub Security Advisories](https://github.com/georg-nikola/docs-drift/security/advisories)
+- See [SECURITY.md](SECURITY.md) for full details
 
 ## Installation
 
