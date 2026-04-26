@@ -13,6 +13,9 @@ jobs:
   gitleaks:
     name: Gitleaks — Secrets Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,11 +78,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install osv-scanner
+        run: |
+          wget -q https://github.com/google/osv-scanner/releases/download/v1.8.5/osv-scanner_linux_amd64 -O /tmp/osv-scanner
+          chmod +x /tmp/osv-scanner
+
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action@v2
-        with:
-          scan-args: |-
-            --recursive
-            --skip-git
-            .
-        continue-on-error: true
+        run: /tmp/osv-scanner --recursive --skip-git . || true
